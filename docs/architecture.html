@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Omokai Robotics - Interactive Architecture</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0b0f19;
+            --panel-bg: rgba(17, 24, 39, 0.7);
+            --border-color: rgba(255, 255, 255, 0.08);
+            --text-color: #e2e8f0;
+            --accent-blue: #00d2ff;
+            --accent-purple: #9d4edd;
+            --accent-green: #38b000;
+            --accent-orange: #ff9e00;
+            --accent-red: #ff0054;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+            display: flex;
+            flex-direction: column;
+        }
+
+        header {
+            background: var(--panel-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 10;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 1.5rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .logo-symbol {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 1.1rem;
+            -webkit-text-fill-color: white;
+        }
+
+        .subtitle {
+            font-size: 0.9rem;
+            color: #94a3b8;
+            font-weight: 400;
+        }
+
+        main {
+            flex: 1;
+            position: relative;
+            cursor: grab;
+            overflow: hidden;
+        }
+
+        main:active {
+            cursor: grabbing;
+        }
+
+        #canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            transform-origin: 0 0;
+            will-change: transform;
+        }
+
+        /* Float controls */
+        .controls {
+            position: absolute;
+            bottom: 2rem;
+            right: 2rem;
+            background: var(--panel-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 0.5rem;
+            display: flex;
+            gap: 0.5rem;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+            z-index: 10;
+        }
+
+        .btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            font-size: 1.2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn:hover {
+            background: rgba(255, 255, 255, 0.15);
+            color: var(--accent-blue);
+            border-color: rgba(0, 210, 255, 0.3);
+        }
+
+        .legend-panel {
+            position: absolute;
+            top: 2rem;
+            left: 2rem;
+            background: var(--panel-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 1.25rem;
+            width: 320px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.4);
+            z-index: 10;
+        }
+
+        .legend-title {
+            font-weight: 600;
+            font-size: 1rem;
+            margin-bottom: 0.75rem;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 0.5rem;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.75rem;
+            margin-bottom: 0.75rem;
+            font-size: 0.85rem;
+            line-height: 1.35;
+        }
+
+        .legend-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 4px;
+            margin-top: 3px;
+            flex-shrink: 0;
+        }
+
+        /* SVG Node classes */
+        .node {
+            transition: filter 0.3s ease, opacity 0.3s ease;
+        }
+        .node:hover {
+            filter: brightness(1.2);
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="logo">
+            <div class="logo-symbol">O</div>
+            Omokai Robotics Pipeline Architecture
+        </div>
+        <div class="subtitle">Interactive Zoom & Pan Diagram</div>
+    </header>
+
+    <main id="viewport">
+        <div id="canvas">
+            <svg viewBox="0 0 1200 800" width="100%" height="100%" style="display: block;">
+                <defs>
+                    <!-- Background Grid Pattern -->
+                    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+                        <path d="M 40 0 L 0 0 0 40" fill="none" stroke="rgba(255, 255, 255, 0.02)" stroke-width="1" />
+                    </pattern>
+
+                    <!-- Arrow Marker -->
+                    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                        <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#475569" />
+                    </marker>
+                    <marker id="arrow-blue" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                        <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#00d2ff" />
+                    </marker>
+
+                    <!-- Drop Shadows -->
+                    <filter id="glow-orange" x="-20%" y="-20%" width="140%" height="140%">
+                        <feGaussianBlur stdDeviation="8" result="blur" />
+                        <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                    </filter>
+                    <filter id="glow-blue" x="-20%" y="-20%" width="140%" height="140%">
+                        <feGaussianBlur stdDeviation="8" result="blur" />
+                        <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                    </filter>
+                    <filter id="glow-purple" x="-20%" y="-20%" width="140%" height="140%">
+                        <feGaussianBlur stdDeviation="8" result="blur" />
+                        <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                    </filter>
+                    <filter id="glow-green" x="-20%" y="-20%" width="140%" height="140%">
+                        <feGaussianBlur stdDeviation="8" result="blur" />
+                        <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                    </filter>
+                    <filter id="glow-red" x="-20%" y="-20%" width="140%" height="140%">
+                        <feGaussianBlur stdDeviation="8" result="blur" />
+                        <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                    </filter>
+                </defs>
+
+                <!-- Grid Background -->
+                <rect width="1200" height="800" fill="url(#grid)" />
+
+                <!-- FLOW LINES -->
+                <!-- Prompt -> main.py -->
+                <path d="M 170 300 H 260" fill="none" stroke="#ff9e00" stroke-width="2.5" marker-end="url(#arrow)" />
+                
+                <!-- config -> main.py -->
+                <path d="M 330 140 V 240" fill="none" stroke="#38b000" stroke-width="2.5" marker-end="url(#arrow)" />
+                
+                <!-- main.py -> parser -->
+                <path d="M 400 300 H 490" fill="none" stroke="#00d2ff" stroke-width="2.5" marker-end="url(#arrow-blue)" />
+                
+                <!-- config -> parser -->
+                <path d="M 380 120 C 580 120, 580 200, 580 240" fill="none" stroke="#38b000" stroke-width="2" stroke-dasharray="6,4" marker-end="url(#arrow)" />
+                
+                <!-- parser -> Gemini API -->
+                <path d="M 670 280 H 790" fill="none" stroke="#9d4edd" stroke-width="2" marker-end="url(#arrow)" />
+                <!-- Gemini API -> parser -->
+                <path d="M 790 320 H 670" fill="none" stroke="#9d4edd" stroke-width="2" stroke-dasharray="6,4" marker-end="url(#arrow)" />
+
+                <!-- parser -> main.py (Raw JSON) -->
+                <path d="M 580 360 C 580 430, 330 430, 330 360" fill="none" stroke="#00d2ff" stroke-width="2" marker-end="url(#arrow)" />
+
+                <!-- main.py -> validator -->
+                <path d="M 330 360 V 490" fill="none" stroke="#00d2ff" stroke-width="2.5" marker-end="url(#arrow-blue)" />
+
+                <!-- config -> validator -->
+                <path d="M 280 120 C 130 120, 130 520, 240 520" fill="none" stroke="#38b000" stroke-width="2" stroke-dasharray="6,4" marker-end="url(#arrow)" />
+
+                <!-- validator -> main.py (Validated MissionPlan) -->
+                <path d="M 420 520 C 470 520, 470 470, 380 340" fill="none" stroke="#38b000" stroke-width="2" marker-end="url(#arrow)" />
+
+                <!-- main.py -> executor -->
+                <path d="M 260 320 C 200 320, 200 660, 260 660" fill="none" stroke="#00d2ff" stroke-width="2.5" marker-end="url(#arrow-blue)" />
+
+                <!-- executor -> MockRobotController -->
+                <path d="M 420 660 H 510" fill="none" stroke="#00d2ff" stroke-width="2.5" marker-end="url(#arrow-blue)" />
+
+                <!-- ================= NODES ================= -->
+
+                <!-- 1. INPUT PROMPT -->
+                <g class="node" transform="translate(20, 240)">
+                    <rect width="150" height="120" rx="16" fill="rgba(255, 158, 0, 0.08)" stroke="#ff9e00" stroke-width="2" filter="url(#glow-orange)" />
+                    <text x="75" y="40" fill="#ff9e00" font-size="14" font-weight="800" text-anchor="middle">INPUT PROMPT</text>
+                    <text x="75" y="70" fill="#e2e8f0" font-size="11" text-anchor="middle">"Patrol warehouse</text>
+                    <text x="75" y="88" fill="#e2e8f0" font-size="11" text-anchor="middle">twice at speed 1.2"</text>
+                </g>
+
+                <!-- 2. MAIN ORCHESTRATOR (main.py) -->
+                <g class="node" transform="translate(260, 240)">
+                    <rect width="140" height="120" rx="16" fill="rgba(0, 210, 255, 0.08)" stroke="#00d2ff" stroke-width="2" filter="url(#glow-blue)" />
+                    <text x="70" y="45" fill="#00d2ff" font-size="15" font-weight="800" text-anchor="middle">main.py</text>
+                    <text x="70" y="75" fill="#94a3b8" font-size="11" text-anchor="middle">Pipeline Manager</text>
+                    <text x="70" y="92" fill="#94a3b8" font-size="11" text-anchor="middle">& Env Loader</text>
+                </g>
+
+                <!-- 3. CONFIGURATION -->
+                <g class="node" transform="translate(260, 20)">
+                    <rect width="140" height="120" rx="16" fill="rgba(56, 176, 0, 0.08)" stroke="#38b000" stroke-width="2" filter="url(#glow-green)" />
+                    <text x="70" y="40" fill="#38b000" font-size="14" font-weight="800" text-anchor="middle">CONFIG FILES</text>
+                    <text x="70" y="70" fill="#e2e8f0" font-size="11" text-anchor="middle">settings.yaml</text>
+                    <text x="70" y="90" fill="#e2e8f0" font-size="11" text-anchor="middle">waypoints.yaml</text>
+                </g>
+
+                <!-- 4. LLM PARSER CLIENT -->
+                <g class="node" transform="translate(490, 240)">
+                    <rect width="180" height="120" rx="16" fill="rgba(157, 78, 221, 0.08)" stroke="#9d4edd" stroke-width="2" filter="url(#glow-purple)" />
+                    <text x="90" y="35" fill="#9d4edd" font-size="14" font-weight="800" text-anchor="middle">MISSION PARSER</text>
+                    <text x="90" y="60" fill="#94a3b8" font-size="10" text-anchor="middle">llm/client.py</text>
+                    <text x="90" y="85" fill="#e2e8f0" font-size="11" text-anchor="middle">Dynamic Prompt Injection</text>
+                    <text x="90" y="100" fill="#e2e8f0" font-size="10" text-anchor="middle">(Injects Waypoint Keys)</text>
+                </g>
+
+                <!-- 5. GEMINI API -->
+                <g class="node" transform="translate(790, 240)">
+                    <rect width="160" height="120" rx="16" fill="rgba(157, 78, 221, 0.15)" stroke="#9d4edd" stroke-width="2.5" stroke-dasharray="4,4" />
+                    <text x="80" y="45" fill="#9d4edd" font-size="15" font-weight="800" text-anchor="middle">Gemini LLM</text>
+                    <text x="80" y="70" fill="#e2e8f0" font-size="11" text-anchor="middle">gemini-2.5-flash</text>
+                    <text x="80" y="90" fill="#94a3b8" font-size="9" text-anchor="middle">Structured JSON Gen</text>
+                </g>
+
+                <!-- 6. SAFETY VALIDATOR -->
+                <g class="node" transform="translate(240, 490)">
+                    <rect width="180" height="100" rx="16" fill="rgba(255, 0, 84, 0.08)" stroke="#ff0054" stroke-width="2" filter="url(#glow-red)" />
+                    <text x="90" y="35" fill="#ff0054" font-size="14" font-weight="800" text-anchor="middle">VALIDATOR GUARD</text>
+                    <text x="90" y="60" fill="#94a3b8" font-size="10" text-anchor="middle">validator/validator.py</text>
+                    <text x="90" y="80" fill="#e2e8f0" font-size="11" text-anchor="middle">Pydantic & Settings Check</text>
+                </g>
+
+                <!-- 7. MISSION EXECUTOR -->
+                <g class="node" transform="translate(260, 620)">
+                    <rect width="160" height="90" rx="16" fill="rgba(0, 210, 255, 0.08)" stroke="#00d2ff" stroke-width="2" filter="url(#glow-blue)" />
+                    <text x="80" y="35" fill="#00d2ff" font-size="14" font-weight="800" text-anchor="middle">EXECUTOR</text>
+                    <text x="80" y="55" fill="#94a3b8" font-size="10" text-anchor="middle">executor/executor.py</text>
+                    <text x="80" y="73" fill="#e2e8f0" font-size="11" text-anchor="middle">Waypoint Sequencer</text>
+                </g>
+
+                <!-- 8. MOCK ROBOT CONTROLLER -->
+                <g class="node" transform="translate(510, 620)">
+                    <rect width="200" height="90" rx="16" fill="rgba(56, 176, 0, 0.08)" stroke="#38b000" stroke-width="2" filter="url(#glow-green)" />
+                    <text x="100" y="35" fill="#38b000" font-size="14" font-weight="800" text-anchor="middle">ROBOT CONTROLLER</text>
+                    <text x="100" y="55" fill="#94a3b8" font-size="10" text-anchor="middle">robot/mock_controller.py</text>
+                    <text x="100" y="73" fill="#e2e8f0" font-size="11" text-anchor="middle">Telemetry & Simulation</text>
+                </g>
+            </svg>
+        </div>
+
+        <!-- Legend Panel -->
+        <div class="legend-panel">
+            <div class="legend-title">System Key & States</div>
+            <div class="legend-item">
+                <div class="legend-dot" style="background: var(--accent-orange);"></div>
+                <div><strong>Natural Input:</strong> Raw unstructured instructions inputted via CLI flag.</div>
+            </div>
+            <div class="legend-item">
+                <div class="legend-dot" style="background: var(--accent-blue);"></div>
+                <div><strong>Pipeline Flow:</strong> Process execution and JSON data payload routing.</div>
+            </div>
+            <div class="legend-item">
+                <div class="legend-dot" style="background: var(--accent-purple);"></div>
+                <div><strong>LLM Client:</strong> Injects waypoints from settings into prompt to ensure exact matches.</div>
+            </div>
+            <div class="legend-item">
+                <div class="legend-dot" style="background: var(--accent-red);"></div>
+                <div><strong>Validation Interceptor:</strong> Intercepts JSON and blocks execution if rules are violated.</div>
+            </div>
+            <div class="legend-item">
+                <div class="legend-dot" style="background: var(--accent-green);"></div>
+                <div><strong>Hardware Driver:</strong> Execution layer (replaceable with physical ROS2 Nav2 node).</div>
+            </div>
+        </div>
+
+        <!-- Canvas controls -->
+        <div class="controls">
+            <button class="btn" id="zoom-in" title="Zoom In">+</button>
+            <button class="btn" id="zoom-out" title="Zoom Out">-</button>
+            <button class="btn" id="reset" title="Fit Screen">⟲</button>
+        </div>
+    </main>
+
+    <script>
+        const viewport = document.getElementById('viewport');
+        const canvas = document.getElementById('canvas');
+        const zoomIn = document.getElementById('zoom-in');
+        const zoomOut = document.getElementById('zoom-out');
+        const reset = document.getElementById('reset');
+
+        let zoom = 1;
+        let panX = 0;
+        let panY = 0;
+        let isDragging = false;
+        let startX, startY;
+
+        function updateTransform() {
+            canvas.style.transform = `translate(${panX}px, ${panY}px) scale(${zoom})`;
+        }
+
+        // Mouse pan
+        viewport.addEventListener('mousedown', (e) => {
+            if (e.target.closest('.controls') || e.target.closest('.legend-panel')) return;
+            isDragging = true;
+            startX = e.clientX - panX;
+            startY = e.clientY - panY;
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            panX = e.clientX - startX;
+            panY = e.clientY - startY;
+            updateTransform();
+        });
+
+        window.addEventListener('mouseup', () => {
+            isDragging = false;
+        });
+
+        // Wheel zoom
+        viewport.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const zoomFactor = 1.1;
+            const mouseX = e.clientX - viewport.getBoundingClientRect().left;
+            const mouseY = e.clientY - viewport.getBoundingClientRect().top;
+            
+            // Calculate zoom center point
+            const targetX = (mouseX - panX) / zoom;
+            const targetY = (mouseY - panY) / zoom;
+
+            if (e.deltaY < 0) {
+                zoom *= zoomFactor;
+            } else {
+                zoom /= zoomFactor;
+            }
+            
+            // Cap zoom levels
+            zoom = Math.min(Math.max(0.4, zoom), 5);
+            
+            panX = mouseX - targetX * zoom;
+            panY = mouseY - targetY * zoom;
+            
+            updateTransform();
+        }, { passive: false });
+
+        // Button Controls
+        zoomIn.addEventListener('click', () => {
+            zoom *= 1.25;
+            updateTransform();
+        });
+
+        zoomOut.addEventListener('click', () => {
+            zoom /= 1.25;
+            updateTransform();
+        });
+
+        reset.addEventListener('click', () => {
+            zoom = 0.9;
+            panX = (viewport.clientWidth - (1200 * zoom)) / 2;
+            panY = (viewport.clientHeight - (800 * zoom)) / 2;
+            updateTransform();
+        });
+
+        // Initialize center fit
+        window.addEventListener('load', () => {
+            reset.click();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,53 @@
+import yaml
+from pathlib import Path
+import logging
+from .schema import MissionPlan
+
+logger = logging.getLogger(__name__)
+
+class MissionValidator:
+    """
+    Validates the structured mission plan against business and safety rules
+    defined in the configuration YAML files.
+    """
+    def __init__(self, config_dir: str = "config"):
+        self.config_dir = Path(config_dir)
+        self.settings = self._load_yaml("settings.yaml")
+        self.waypoints = self._load_yaml("waypoints.yaml")
+
+    def _load_yaml(self, filename: str) -> dict:
+        filepath = self.config_dir / filename
+        if not filepath.exists():
+            raise FileNotFoundError(f"Configuration file not found: {filepath}")
+        with open(filepath, "r") as f:
+            return yaml.safe_load(f)
+
+    def validate(self, raw_mission: dict) -> MissionPlan:
+        """
+        Validates the raw dictionary against Pydantic schema and safety limits.
+        Returns a validated MissionPlan object or raises ValueError.
+        """
+        # 1. Structural and type validation via Pydantic
+        try:
+            plan = MissionPlan(**raw_mission)
+        except Exception as e:
+            raise ValueError(f"Schema validation failed: {e}")
+
+        # 2. Business logic & safety validation
+        max_loops = self.settings.get("safety", {}).get("max_loops", 10)
+        if plan.loops < 1 or plan.loops > max_loops:
+            raise ValueError(f"Safety constraint violated: Loop count {plan.loops} is outside allowed range (1 - {max_loops})")
+
+        if plan.speed is not None:
+            min_speed = self.settings.get("safety", {}).get("min_speed", 0.1)
+            max_speed = self.settings.get("safety", {}).get("max_speed", 1.5)
+            if plan.speed < min_speed or plan.speed > max_speed:
+                raise ValueError(f"Safety constraint violated: Speed {plan.speed}m/s is outside allowed bounds ({min_speed} - {max_speed}m/s)")
+        else:
+            plan.speed = self.settings.get("safety", {}).get("default_speed", 0.5)
+
+        allowed_routes = self.waypoints.get("routes", {}).keys()
+        if plan.route not in allowed_routes:
+            raise ValueError(f"Safety constraint violated: Route '{plan.route}' is not a known route. Known routes: {list(allowed_routes)}")
+
+        return plan
