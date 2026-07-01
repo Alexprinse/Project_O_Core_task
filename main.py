@@ -37,6 +37,7 @@ def main():
     parser = argparse.ArgumentParser(description="Omokai Robotics: Natural Language Mission Pipeline")
     parser.add_argument("--prompt", type=str, required=True, help="Natural language prompt for the robot")
     parser.add_argument("--mock-llm", action="store_true", help="Force using the mock LLM parser instead of Gemini API")
+    parser.add_argument("--ros", action="store_true", help="Use ROS 2 Nav2 Controller instead of Mock (requires Ubuntu/ROS2)")
     args = parser.parse_args()
     
     logger.info("🤖 Starting Omokai Robotics Mission Pipeline...")
@@ -47,10 +48,15 @@ def main():
         
         # If settings say use_mock is true, override the CLI flag
         use_mock = args.mock_llm or validator.settings.get("llm", {}).get("use_mock", False)
-        routes = list(validator.waypoints.get("routes", {}).keys())
-        llm_parser = MissionParser(use_mock=use_mock, allowed_routes=routes)
+        llm_parser = MissionParser(use_mock=use_mock)
         
-        robot = MockRobotController()
+        if args.ros:
+            logger.info("🔌 Loading ROS 2 Nav2 Controller...")
+            from robot.ros2_controller import ROS2Nav2Controller
+            robot = ROS2Nav2Controller()
+        else:
+            robot = MockRobotController()
+            
         executor = MissionExecutor(robot=robot, waypoints_config=validator.waypoints)
     except Exception as e:
         logger.error(f"Failed to initialize system: {e}")
