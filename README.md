@@ -68,97 +68,110 @@ flowchart TD
 
 ---
 
-## 🛠️ Installation & Setup
+## 🛠️ Step-by-Step Setup & Execution Guide
 
-This repository is designed to be highly portable and run out-of-the-box on the examiner's Linux machine.
+Follow these steps sequentially to set up and run the simulation and controller pipeline.
 
-### Method A: Automated Host Setup (Examiner Recommended)
-For a fully automated installation of ROS 2 Humble, Nav2, TurtleBot3, and e-Yantra dependencies on Ubuntu 22.04 LTS:
+### Step 1: Clone the Repository
+Clone the codebase and navigate to the project directory:
 ```bash
+git clone https://github.com/Alexprinse/Omokai_Project.git
+cd Omokai_Project
+```
+
+### Step 2: Run the Simulation Host Setup Script
+Execute the automated installer to set up ROS 2 Humble, Gazebo, Nav2, all Python dependencies, and build the workspace on Ubuntu 22.04 LTS:
+```bash
+chmod +x setup_simulation.sh
 ./setup_simulation.sh
 ```
-The script will also create the Python virtual environment with system site packages automatically.
+*(This script also automatically sets up the Python virtual environment `.venv` with access to ROS system packages).*
 
-### Method B: Manual Local Setup
-1. **Build the simulation workspace (`eyrc_ws`)**:
-   If you have ROS 2 Humble installed on your host:
-   ```bash
-   cd eyrc_ws
-   colcon build
-   cd ..
-   ```
-2. **Create and activate a virtual environment**:
-   ```bash
-   python3 -m venv --system-site-packages .venv
-   source .venv/bin/activate
-   ```
-3. **Install dependencies**:
-   ```bash
-   pip install -r requirements.txt
-   ```
-4. **Set your Gemini API Key**:
-   Create a `.env` file at the root:
-   ```env
-   GEMINI_API_KEY=your_gemini_api_key_here
-   ```
+### Step 3: Build the Simulation Workspace (Manual Re-compilation)
+The setup script compiles the workspace automatically. However, if you modify code in `eyrc_ws` or want to rebuild manually, run:
+```bash
+cd eyrc_ws
+colcon build
+cd ..
+```
 
+### Step 4: Run the Simulation & Pipeline (Native Host Setup)
 
-### Method C: Docker Setup
-To run the pipeline inside a portable container:
-1. **Build the Docker image**:
-   ```bash
-   docker build -t omokai-mission-pipeline .
-   ```
-2. **Run in Offline/Mock Mode (No simulator needed)**:
-   ```bash
-   docker run -it --env-file .env omokai-mission-pipeline --prompt "Patrol the warehouse twice at speed 1.2" --mock-llm
-   ```
-3. **Run in ROS Mode (Bridges to Gazebo on the Host)**:
-   *Ensure Gazebo/Nav2 is running on your host first, then execute:*
-   ```bash
-   docker run -it --net=host --ipc=host --env-file .env omokai-mission-pipeline --prompt "Patrol the serpentine path at speed 0.4" --robot ebot --ros
-   ```
+To execute the pipeline natively on your host machine:
+
+#### 1. Start the Simulation (Terminals 1 & 2)
+*   **For e-Yantra Krishi Cobot (ebot):**
+    *   **Terminal 1 (Launch World):**
+        ```bash
+        source eyrc_ws/install/setup.bash
+        ros2 launch eyantra_warehouse task2.launch.py
+        ```
+    *   **Terminal 2 (Spawn Robot):**
+        ```bash
+        source eyrc_ws/install/setup.bash
+        ros2 launch ebot_description spawn_ebot.launch.py
+        ```
+*   **For TurtleBot3:**
+    *   **Terminal 1:**
+        ```bash
+        export TURTLEBOT3_MODEL=waffle_pi
+        ros2 launch nav2_bringup tb3_simulation_launch.py
+        ```
+
+#### 2. Run the Controller Pipeline (Terminal 3)
+Activate the virtual environment, export your API key, and launch the pipeline:
+```bash
+source .venv/bin/activate
+export GEMINI_API_KEY="your_gemini_api_key_here"
+```
+
+##### Example Prompts to Try:
+*   **ebot Serpentine Sweep:**
+    ```bash
+    python main.py --prompt "Patrol the serpentine path at speed 0.4" --robot ebot --ros
+    ```
+*   **ebot Central Corridor:**
+    ```bash
+    python main.py --prompt "Drive through the central corridor at speed 0.8" --robot ebot --ros
+    ```
+*   **TurtleBot3 Warehouse Loop:**
+    ```bash
+    python main.py --prompt "Patrol the warehouse loop twice at speed 1.2" --robot turtlebot3 --ros
+    ```
 
 ---
 
+### Step 5: Run inside Docker (Bridged to Host Simulator)
+If you want to run the controller pipeline inside a Docker container while bridging to the Gazebo simulation running on your host:
 
-## 🚀 Execution & Usage Examples
+1.  **Build the Docker image:**
+    ```bash
+    docker build -t omokai-mission-pipeline .
+    ```
+2.  **Start the simulator and robot on the host** (using step 4.1 above).
+3.  **Run the container with host-network sharing:**
+    ```bash
+    docker run -it --rm --net=host --ipc=host \
+      -e GEMINI_API_KEY="your_gemini_api_key_here" \
+      omokai-mission-pipeline \
+      --prompt "Patrol the serpentine path at speed 0.4" --robot ebot --ros
+    ```
 
-You can run the pipeline for different robot platforms.
+---
 
-### 1. Mock Mode (Offline Testing)
-Verify the LLM parsing and Pydantic validation workflow without launching any simulators:
-```bash
-python main.py --prompt "Patrol the warehouse loop twice" --robot turtlebot3 --mock-llm
-```
+### Step 6: Run in Mock Mode (Zero-Dependency Offline Test)
+If you do not have Gazebo or ROS 2 installed and want to run the pipeline offline:
 
-### 2. TurtleBot3 Navigation (Gazebo Classic + Nav2)
-Requires running the standard TurtleBot3 Nav2 stack (`ros2 launch nav2_bringup tb3_simulation_launch.py`).
-```bash
-python main.py --prompt "Patrol the warehouse loop once at speed 1.2" --robot turtlebot3 --ros
-```
-
-### 3. e-Yantra Krishi Cobot (Ignition Gazebo + Direct Control)
-
-Ensure you have executed the automated host setup script (`./setup_simulation.sh`) to install system dependencies and compile the workspace.
-
-#### Option A: Manual Launch (Separate Spawner)
-1. **Terminal 1:** Source and launch the warehouse world:
-   ```bash
-   source eyrc_ws/install/setup.bash
-   ros2 launch eyantra_warehouse task2.launch.py
-   ```
-2. **Terminal 2:** Spawn the ebot model:
-   ```bash
-   source eyrc_ws/install/setup.bash
-   ros2 launch ebot_description spawn_ebot.launch.py
-   ```
-3. **Terminal 3:** Activate the Python virtual environment and run the pipeline:
-   ```bash
-   source .venv/bin/activate
-   python main.py --prompt "Patrol the serpentine path at speed 0.4" --robot ebot --ros
-   ```
-
+*   **Using Docker (Fastest, requires no local Python packages):**
+    ```bash
+    docker build -t omokai-mission-pipeline .
+    docker run -it --rm omokai-mission-pipeline --prompt "Patrol the warehouse loop twice" --robot turtlebot3 --mock-llm
+    ```
+*   **Using local Python:**
+    ```bash
+    source .venv/bin/activate
+    python main.py --prompt "Patrol the warehouse loop twice" --robot turtlebot3 --mock-llm
+    ```
 
 ---
 
