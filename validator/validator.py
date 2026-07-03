@@ -10,10 +10,10 @@ class MissionValidator:
     Validates the structured mission plan against business and safety rules
     defined in the configuration YAML files.
     """
-    def __init__(self, config_dir: str = "config"):
+    def __init__(self, config_dir: str = "config", waypoints_file: str = "waypoints_turtlebot3.yaml"):
         self.config_dir = Path(config_dir)
         self.settings = self._load_yaml("settings.yaml")
-        self.waypoints = self._load_yaml("waypoints.yaml")
+        self.waypoints = self._load_yaml(waypoints_file)
 
     def _load_yaml(self, filename: str) -> dict:
         filepath = self.config_dir / filename

@@ -15,7 +15,6 @@ routes:
     - { name: "bottom", x: -1.98, y: 0.0, theta: -3.14 }
     - { name: "left", x: 0.0, y: 1.98, theta: 1.57}
 
-
 home:
   x: 0.0
   y: 0.0

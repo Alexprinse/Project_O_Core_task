@@ -37,14 +37,16 @@ def main():
     parser = argparse.ArgumentParser(description="Omokai Robotics: Natural Language Mission Pipeline")
     parser.add_argument("--prompt", type=str, required=True, help="Natural language prompt for the robot")
     parser.add_argument("--mock-llm", action="store_true", help="Force using the mock LLM parser instead of Gemini API")
-    parser.add_argument("--ros", action="store_true", help="Use ROS 2 Nav2 Controller instead of Mock (requires Ubuntu/ROS2)")
+    parser.add_argument("--ros", action="store_true", help="Use ROS 2 Controller instead of Mock (requires Ubuntu/ROS2)")
+    parser.add_argument("--robot", type=str, choices=["turtlebot3", "ebot"], default="turtlebot3", help="Robot platform configuration")
     args = parser.parse_args()
     
     logger.info("🤖 Starting Omokai Robotics Mission Pipeline...")
     
     # 1. Initialize Components
     try:
-        validator = MissionValidator(config_dir="config")
+        waypoints_file = f"waypoints_{args.robot}.yaml"
+        validator = MissionValidator(config_dir="config", waypoints_file=waypoints_file)
         
         # If settings say use_mock is true, override the CLI flag
         use_mock = args.mock_llm or validator.settings.get("llm", {}).get("use_mock", False)
@@ -52,9 +54,14 @@ def main():
         llm_parser = MissionParser(use_mock=use_mock, allowed_routes=routes)
         
         if args.ros:
-            logger.info("🔌 Loading ROS 2 Nav2 Controller...")
-            from robot.ros2_controller import ROS2Nav2Controller
-            robot = ROS2Nav2Controller()
+            if args.robot == "ebot":
+                logger.info("🔌 Loading ebot Direct Controller...")
+                from robot.ebot_controller import EbotRobotController
+                robot = EbotRobotController()
+            else:
+                logger.info("🔌 Loading ROS 2 Nav2 Controller...")
+                from robot.ros2_controller import ROS2Nav2Controller
+                robot = ROS2Nav2Controller()
         else:
             robot = MockRobotController()
             

@@ -1,0 +1,40 @@
+routes:
+  # 1. Full Serpentine Sweep
+  serpentine:
+    - { name: "lane3_bottom", x: 0.36, y: -5.7, theta: 0.0 }
+    - { name: "lane3_dock_load", x: 0.36, y: -1.95, theta: 1.57 }
+    - { name: "lane3_top", x: 0.36, y: 1.33, theta: 1.57 }
+    - { name: "lane2_top", x: -1.58, y: 1.43, theta: 3.14 }
+    - { name: "lane2_bottom", x: -1.58, y: -6.2, theta: -1.57 }
+    - { name: "lane1_bottom", x: -3.45, y: -6.2, theta: -3.14 }
+    - { name: "lane1_top", x: -3.45, y: 1.33, theta: 1.57 }
+    - { name: "lane3_top_return", x: 0.36, y: 1.33, theta: 0.0 }
+    - { name: "lane3_dock_unload", x: 0.36, y: -1.95, theta: -1.57 }
+    - { name: "lane3_bottom_return", x: 0.36, y: -5.7, theta: -1.57 }
+    - { name: "lane2_bottom_return", x: -1.58, y: -5.7, theta: -3.14 }
+
+  # 2. Dock Supply Run (Quick load/unload crop run)
+  supply_run:
+    - { name: "lane3_entry", x: 0.36, y: -5.7, theta: 0.0 }
+    - { name: "dock_station", x: 0.36, y: -1.95, theta: 1.57 }
+    - { name: "lane3_top", x: 0.36, y: 1.33, theta: 1.57 }
+    - { name: "lane2_top", x: -1.58, y: 1.43, theta: 3.14 }
+
+
+
+  # 3. Main Central Corridor (Between the planter boxes)
+  central_corridor:
+    - { name: "lane2_entry", x: -1.58, y: -5.7, theta: 1.57 }
+    - { name: "lane2_top", x: -1.58, y: 1.43, theta: 1.57 }
+
+  # 4. Outer Boundary Loop (L3 up, across top, L1 down)
+  farm_boundary:
+    - { name: "lane3_entry", x: 0.36, y: -5.7, theta: 0.0 }
+    - { name: "lane3_top", x: 0.36, y: 1.33, theta: 1.57 }
+    - { name: "lane1_top", x: -3.45, y: 1.33, theta: 3.14 }
+    - { name: "lane1_bottom", x: -3.45, y: -6.2, theta: -1.57 }
+
+home:
+  x: -1.53
+  y: -6.61
+  theta: 1.57

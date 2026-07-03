@@ -1,23 +1,12 @@
 # 🤖 Omokai Robotics: Natural Language Mission Pipeline
 
-[![Python 3.10+](https://img.shields.io/badge/python-3.10+-00d2ff.svg?style=flat-square&logo=python)](https://www.python.org/)
-[![Google GenAI SDK](https://img.shields.io/badge/Gemini-SDK_0.1+-9d4edd.svg?style=flat-square&logo=google)](https://github.com/google/generative-ai-python)
-[![Pydantic v2](https://img.shields.io/badge/Pydantic-v2-ff0054.svg?style=flat-square&logo=pydantic)](https://docs.pydantic.dev/)
-[![Status](https://img.shields.io/badge/build-passing-38b000.svg?style=flat-square)](https://github.com)
-
 A production-quality, modular robotics pipeline that translates natural language instructions into validated, deterministic JSON mission plans and executes them on physical or simulated robots.
 
----
-
-## ⚡ Interactive Architecture Diagram
-
-For an immersive, high-fidelity view of the system architecture—featuring scrollable zooming, click-to-highlight elements, and a dynamic key—open the interactive documentation page directly:
-
-👉 **[Open Interactive Architecture Panel](file:///Users/shalem/Omokai/docs/architecture.html)**
+This project implements the core task of the Omokai Robotics Engineering Task, demonstrating full support for multiple ground robot platforms in simulation: **TurtleBot3** (using ROS 2 Nav2) and the **e-Yantra Krishi Cobot** (using direct odometry/LiDAR velocity controls).
 
 ---
 
-## 🏗️ System Pipeline Architecture
+## 🏗️ System Architecture
 
 The pipeline processes user commands through a sequential, decoupled chain:
 
@@ -34,7 +23,7 @@ flowchart TD
     Prompt["🗣️ User Prompt (Plain Text)<br/>e.g., 'Patrol the warehouse twice'"]:::inputNode
 
     subgraph ConfigLayer ["⚙️ Configuration Layer"]
-        Waypoints["📍 config/waypoints.yaml<br/>(Allowed route coordinates)"]:::configNode
+        Waypoints["📍 config/waypoints_*.yaml<br/>(Allowed route coordinates)"]:::configNode
         Settings["🛡️ config/settings.yaml<br/>(Speed & Loop constraints)"]:::configNode
     end
 
@@ -50,7 +39,7 @@ flowchart TD
 
     subgraph ControlLayer ["🚦 Deterministic Control Loop"]
         Executor["🚦 Mission Executor (executor/executor.py)<br/>Translates coordinates to path steps"]:::executorNode
-        Robot["🚀 Robot Controller (robot/mock_controller.py)<br/>Abstracted motor / simulated driving"]:::executorNode
+        Robot["🚀 Robot Controller (robot/)<br/>Direct odom / Nav2 driving"]:::executorNode
     end
 
     %% Flow Connections
@@ -66,46 +55,46 @@ flowchart TD
     Executor -->|10. Sequence coordinate poses| Robot
 ```
 
-### Core Architecture Stages
+### Architectural Breakdown
 
-1. **Dynamic Context Ingestion (Phase 1)**:
-   At script initialization, [main.py](file:///Users/shalem/Omokai/main.py) reads the allowed route keys from [config/waypoints.yaml](file:///Users/shalem/Omokai/config/waypoints.yaml) and feeds them to [MissionParser](file:///Users/shalem/Omokai/llm/client.py#L9). The parser compiles a dynamic [SYSTEM_PROMPT](file:///Users/shalem/Omokai/llm/prompts.py#L1) specifying the exact allowed keys.
-
-2. **Translation & Structured Generation (Phase 2)**:
-   The plain-text user command is sent to the Gemini API (`gemini-2.5-flash`) along with the dynamically compiled prompt context, forcing the LLM to choose matching keys (e.g. mapping "warehouse loop" directly to `warehouse_loop`) and output a raw JSON dictionary.
-
-3. **Active Validation Shielding (Phase 3)**:
-   Before execution, [MissionValidator](file:///Users/shalem/Omokai/validator/validator.py#L8) catches the raw output. It runs structural validation using [schema.py](file:///Users/shalem/Omokai/validator/schema.py), and checks logical limits defined in [config/settings.yaml](file:///Users/shalem/Omokai/config/settings.yaml) (such as max loops and speed boundaries). If any violations occur, execution is blocked immediately.
-
-4. **Deterministic Motor Loop (Phase 4)**:
-   Once validation succeeds, the safe `MissionPlan` is parsed by [MissionExecutor](file:///Users/shalem/Omokai/executor/executor.py#L7). It coordinates step-by-step route poses and navigates the robot via the [BaseRobotController](file:///Users/shalem/Omokai/robot/base.py#L3) interface. Since execution is strictly separated from AI reasoning, running the same output always guarantees the exact same path.
+1. **Dynamic Context Ingestion**:
+   At initialization, [main.py](file:///home/alex/Documents/Omokai_Project/main.py) reads the selected robot parameter (`--robot`) and loads the corresponding waypoint file (e.g. `config/waypoints_ebot.yaml`). The allowed route keys are extracted and fed to `MissionParser`, which dynamically injects them into the system prompt. This forces the LLM to choose matching keys (e.g., mapping "warehouse" to `warehouse_loop`).
+2. **Translation & Structured Generation**:
+   The plain-text user command is sent to the Gemini API (`gemini-2.5-flash`) along with the dynamically compiled prompt context, forcing the LLM to output a strict JSON structure matching our schema.
+3. **Active Validation Shielding**:
+   Before execution, `MissionValidator` catches the raw output. It runs structural validation using Pydantic, and checks logical limits defined in `config/settings.yaml` (such as speed boundaries and loop count). If any violations occur, execution is blocked immediately.
+4. **Deterministic Motor Loop**:
+   Once validation succeeds, the safe `MissionPlan` is parsed by `MissionExecutor`. It coordinates step-by-step route poses and navigates the robot via the selected controller interface. Since execution is strictly separated from AI reasoning, running the same output always guarantees the exact same path.
 
 ---
 
 ## 🛠️ Installation & Setup
 
-### Local Setup
-1. Create and activate a virtual environment:
+This repository is designed to be highly portable and run out-of-the-box on the examiner's Linux machine.
+
+### Method A: Local Setup (Recommended)
+1. **Create and activate a virtual environment**:
    ```bash
    python3 -m venv .venv
    source .venv/bin/activate
    ```
-2. Install the pipeline dependencies:
+2. **Install dependencies**:
    ```bash
    pip install -r requirements.txt
    ```
-3. Populate your Gemini API Key inside a `.env` file at the root:
+3. **Set your Gemini API Key**:
+   Create a `.env` file at the root:
    ```env
    GEMINI_API_KEY=your_gemini_api_key_here
    ```
 
-### Docker Setup
+### Method B: Docker Setup
 To run the pipeline inside a portable container:
 ```bash
 # Build the Docker image
 docker build -t omokai-mission-pipeline .
 
-# Run the pipeline locally (forces mock LLM mode by default)
+# Run the pipeline locally (forces mock LLM and mock Robot mode by default)
 docker run -it omokai-mission-pipeline --prompt "Patrol the warehouse twice at speed 1.2" --mock-llm
 ```
 
@@ -113,49 +102,60 @@ docker run -it omokai-mission-pipeline --prompt "Patrol the warehouse twice at s
 
 ## 🚀 Execution & Usage Examples
 
-Run the pipeline using the entrypoint script [main.py](file:///Users/shalem/Omokai/main.py):
+You can run the pipeline for different robot platforms.
 
+### 1. Mock Mode (Offline Testing)
+Verify the LLM parsing and Pydantic validation workflow without launching any simulators:
 ```bash
-# Execute a patrol mission using the live Gemini API (reads key from .env)
-python main.py --prompt "Patrol the warehouse loop once at speed 1.2"
-
-# Force offline/local simulation mode using local keyword parsing rules
-python main.py --prompt "Inspect the perimeter twice" --mock-llm
+python main.py --prompt "Patrol the warehouse loop twice" --robot turtlebot3 --mock-llm
 ```
 
-### Try these instructions:
-* 🗣️ *"Inspect the perimeter"*
-* 🗣️ *"Patrol the warehouse loop twice at speed 1.2"*
-* 🗣️ *"Inspect the route and do not return home"* (sets `return_home: false`)
+### 2. TurtleBot3 Navigation (Gazebo Classic + Nav2)
+Requires running the standard TurtleBot3 Nav2 stack (`ros2 launch nav2_bringup tb3_simulation_launch.py`).
+```bash
+python main.py --prompt "Patrol the warehouse loop once at speed 1.2" --robot turtlebot3 --ros
+```
+
+### 3. e-Yantra Krishi Cobot (Ignition Gazebo + Direct Control)
+1. Build and source the companion workspace `/home/alex/Documents/eyrc_ws` in your terminal:
+   ```bash
+   cd /home/alex/Documents/eyrc_ws
+   colcon build
+   source install/setup.bash
+   ```
+2. Launch the simulation world:
+   ```bash
+   ros2 launch eyantra_warehouse task2b.launch.py
+   ```
+3. Run the Omokai pipeline:
+   ```bash
+   python main.py --prompt "Patrol the serpentine path at speed 0.4" --robot ebot --ros
+   ```
 
 ---
 
-## ⚙️ Configuration Schema
-
-Safety boundaries and telemetry velocities are defined in [config/settings.yaml](file:///Users/shalem/Omokai/config/settings.yaml):
-```yaml
-safety:
-  max_speed: 1.5      # Maximum velocity allowed (m/s)
-  min_speed: 0.1      # Minimum velocity allowed (m/s)
-  max_loops: 10       # Prevents infinite control loops
-  default_speed: 0.5  # Fallback speed if prompt is unspecified
-```
-
-Coordinates, names, and orientation states are managed in [config/waypoints.yaml](file:///Users/shalem/Omokai/config/waypoints.yaml):
-```yaml
-routes:
-  warehouse_loop:
-    - { name: "start", x: 0.0, y: 0.0, theta: 0.0 }
-    - { name: "rack_a", x: 5.0, y: 0.0, theta: 0.0 }
-  inspection_route:
-    - { name: "start", x: 0.0, y: 0.0, theta: 0.0 }
-    - { name: "machine_1", x: 2.0, y: 2.0, theta: 0.78 }
-```
+## ⚙️ Configuration Files
+* **[config/settings.yaml](file:///home/alex/Documents/Omokai_Project/config/settings.yaml)**: Safety boundaries (min/max speeds, loop limits).
+* **[config/waypoints_turtlebot3.yaml](file:///home/alex/Documents/Omokai_Project/config/waypoints_turtlebot3.yaml)**: Coordinates for the TurtleBot3 simulation.
+* **[config/waypoints_ebot.yaml](file:///home/alex/Documents/Omokai_Project/config/waypoints_ebot.yaml)**: Serpentine and corridor coordinates for the ebot simulation.
 
 ---
 
-## 📈 Real-World Expansion Model
-To adapt this local mock architecture to hard, real-world deployments:
-1. **Nav2 Integration**: Replace the Mock controller with a `ROS2Nav2Controller` executing ROS 2 action server callbacks (`navigate_to_pose`).
-2. **Multi-Agent Coordination**: Expand the structured JSON output schema to return arrays of missions assigned to specific agent IDs, orchestrating fleets through a Fleet Dispatch module.
-3. **Obstacle Navigation (SLAM)**: The executor passes coordinates to a local dynamic path planner (e.g., ROS 2 Costmaps/DWA), delegating local steering to the navigation stack while maintaining overall mission structure.
+## 📈 Real-World Scaling Story
+
+To adapt this local mock and simulation architecture to a real-world, high-reliability deployment, we would implement:
+1. **Dynamic Path Planning & Local SLAM**: Instead of using direct coordinate waypoints, the executor should send the waypoints to local trajectory planner nodes (e.g. ROS 2 Nav2 DWA or TEB local planners) that utilize active Costmaps. This allows the robot to dynamically steer around unexpected obstacles (such as humans or boxes) in real time while maintaining progress toward the global target.
+2. **Deterministic Fail-safe Guardrails**:
+   * **LLM Fallback**: If the API call times out or returns malformed JSON, the pipeline immediately falls back to a deterministic regex/keyword parser local module to ensure the robot can still execute safety-critical operations offline.
+   * **Telemetry Limits**: The validator continuously monitors state topics. If a velocity exceeding safe bounds is published (due to an LLM hallucination or executor bug), a low-level hardware watchdog node intercepts the message and triggers an emergency stop.
+3. **Multi-Agent Coordination (Central Fleet Dispatch)**: Scale the Pydantic JSON schema to accept squad-level actions (e.g. `formation: wedge`). A fleet manager node then allocates sub-waypoints to individual robots using algorithms like Hungarian assignment and orchestrates synchronized execution.
+
+---
+
+## 📚 Cited Sources
+
+This project builds on and references the following open-source resources:
+* **Pydantic v2** ([pydantic/pydantic](https://github.com/pydantic/pydantic)) - *License: MIT*. Used to define and validate the structural JSON mission schema.
+* **Google GenAI SDK** ([google/generative-ai-python](https://github.com/google/generative-ai-python)) - *License: Apache-2.0*. Used to interface with the Gemini API.
+* **ROS 2 Nav2 Simple Commander** ([ros-navigation/navigation2](https://github.com/ros-navigation/navigation2)) - *License: Apache-2.0*. Used as reference for the programmatic interface (`BasicNavigator`) to Nav2.
+* **eYRC Krishi Cobot Serpentine Navigation** - *License: Custom/Educational*. The proportional control and LiDAR obstacle avoidance algorithms in `robot/ebot_controller.py` are adapted from the candidate's past work in the e-Yantra Robotics Competition 2025-26.
