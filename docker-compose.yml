@@ -1,30 +1,181 @@
 version: '3.8'
 
+# Shared environment block reused by all simulation services
+x-sim-env: &sim-env
+  DISPLAY: ${DISPLAY}
+  QT_X11_NO_MITSHM: 1
+  LIBGL_ALWAYS_SOFTWARE: 1
+  TURTLEBOT3_MODEL: waffle_pi
+  GAZEBO_MODEL_PATH: /opt/ros/humble/share/:/root/.gazebo/models
+
+# Shared X11 display volumes reused by all simulation services
+x-sim-volumes: &sim-volumes
+  - /tmp/.X11-unix:/tmp/.X11-unix:rw
+  - /tmp/.virgl_test:/tmp/.virgl_test:rw
+
 services:
-  # 1. Gazebo + Nav2 Simulation Service
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # CHALLENGE 1 & 2 (Single Robot) — Map-Based Navigation
+  # docker compose up simulation
+  # ─────────────────────────────────────────────────────────────────────────────
   simulation:
     build: .
     image: omokai-robotic-stack:latest
     network_mode: host
     ipc: host
     environment:
-      - DISPLAY=${DISPLAY}
-      - QT_X11_NO_MITSHM=1
-      - LIBGL_ALWAYS_SOFTWARE=1
-      - TURTLEBOT3_MODEL=waffle_pi
-      - GAZEBO_MODEL_PATH=/opt/ros/humble/share/:/root/.gazebo/models
-    volumes:
-      - /tmp/.X11-unix:/tmp/.X11-unix:rw
-      - /tmp/.virgl_test:/tmp/.virgl_test:rw
+      <<: *sim-env
+    volumes: *sim-volumes
     command: >
-      bash -c "source /opt/ros/humble/setup.bash && 
-               ros2 launch nav2_bringup tb3_simulation_launch.py \
-               world:=/app/config/worlds/warehouse.world \
-               map:=/app/config/maps/warehouse_map.yaml \
-               slam:=False \
+      bash -c "source /opt/ros/humble/setup.bash &&
+               source /usr/share/gazebo/setup.sh &&
+               ros2 launch nav2_bringup tb3_simulation_launch.py
+               world:=/app/config/worlds/warehouse.world
+               map:=/app/config/maps/warehouse_map.yaml
+               params_file:=/app/config/nav2_params.yaml
+               robot_sdf:=/app/config/models/turtlebot3_waffle_pi/model.sdf
+               slam:=False
                headless:=False"
 
-  # 2. Interactive Mission Command Pipeline Service
+  # ─────────────────────────────────────────────────────────────────────────────
+  # CHALLENGE 2 — Single Robot SLAM (Dynamic Mapping, no pre-built map)
+  # docker compose up simulation-slam
+  # ─────────────────────────────────────────────────────────────────────────────
+  simulation-slam:
+    build: .
+    image: omokai-robotic-stack:latest
+    network_mode: host
+    ipc: host
+    environment:
+      <<: *sim-env
+    volumes: *sim-volumes
+    command: >
+      bash -c "source /opt/ros/humble/setup.bash &&
+               source /usr/share/gazebo/setup.sh &&
+               ros2 launch nav2_bringup tb3_simulation_launch.py
+               world:=/app/config/worlds/warehouse.world
+               params_file:=/app/config/nav2_params.yaml
+               robot_sdf:=/app/config/models/turtlebot3_waffle_pi/model.sdf
+               slam:=True
+               headless:=False"
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # CHALLENGE 1 (Multi-Robot) — 2-Robot Map-Based Navigation
+  # docker compose up simulation-multi-2
+  # ─────────────────────────────────────────────────────────────────────────────
+  simulation-multi-2:
+    build: .
+    image: omokai-robotic-stack:latest
+    network_mode: host
+    ipc: host
+    environment:
+      <<: *sim-env
+    volumes: *sim-volumes
+    command: >
+      bash -c "source /opt/ros/humble/setup.bash &&
+               source /usr/share/gazebo/setup.sh &&
+               ros2 launch nav2_bringup cloned_multi_tb3_simulation_launch.py
+               world:=/app/config/worlds/warehouse.world
+               map:=/app/config/maps/warehouse_map.yaml
+               params_file:=/app/config/nav2_params.yaml
+               robots:='tb3_0={x: -2.0, y: -0.5, yaw: 0.0}; tb3_1={x: -2.0, y: 0.5, yaw: 0.0}'
+               robot_sdf:=/app/config/models/turtlebot3_waffle_pi/model.sdf
+               autostart:=True"
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # CHALLENGE 1 (Multi-Robot) — 3-Robot Map-Based Navigation
+  # docker compose up simulation-multi-3
+  # ─────────────────────────────────────────────────────────────────────────────
+  simulation-multi-3:
+    build: .
+    image: omokai-robotic-stack:latest
+    network_mode: host
+    ipc: host
+    environment:
+      <<: *sim-env
+    volumes: *sim-volumes
+    command: >
+      bash -c "source /opt/ros/humble/setup.bash &&
+               source /usr/share/gazebo/setup.sh &&
+               ros2 launch nav2_bringup cloned_multi_tb3_simulation_launch.py
+               world:=/app/config/worlds/warehouse.world
+               map:=/app/config/maps/warehouse_map.yaml
+               params_file:=/app/config/nav2_params.yaml
+               robots:='tb3_0={x: -2.0, y: -0.5, yaw: 0.0}; tb3_1={x: -2.0, y: 0.5, yaw: 0.0}; tb3_2={x: -2.0, y: -1.5, yaw: 0.0}'
+               robot_sdf:=/app/config/models/turtlebot3_waffle_pi/model.sdf
+               autostart:=True"
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # CHALLENGE 1 + 2 (Multi-Robot SLAM) — 2-Robot SLAM Simulator
+  # Run alongside multi-slam service below:
+  #   docker compose up simulation-multi-slam-2 multi-slam
+  # ─────────────────────────────────────────────────────────────────────────────
+  simulation-multi-slam-2:
+    build: .
+    image: omokai-robotic-stack:latest
+    network_mode: host
+    ipc: host
+    environment:
+      <<: *sim-env
+    volumes: *sim-volumes
+    command: >
+      bash -c "source /opt/ros/humble/setup.bash &&
+               source /usr/share/gazebo/setup.sh &&
+               ros2 launch nav2_bringup cloned_multi_tb3_simulation_launch.py
+               world:=/app/config/worlds/warehouse.world
+               params_file:=/app/config/nav2_params.yaml
+               robots:='tb3_0={x: -2.0, y: -0.5, yaw: 0.0}; tb3_1={x: -2.0, y: 0.5, yaw: 0.0}'
+               robot_sdf:=/app/config/models/turtlebot3_waffle_pi/model.sdf
+               slam:=True
+               autostart:=True"
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # CHALLENGE 1 + 2 (Multi-Robot SLAM) — 3-Robot SLAM Simulator
+  # Run alongside multi-slam service below:
+  #   docker compose up simulation-multi-slam-3 multi-slam
+  # ─────────────────────────────────────────────────────────────────────────────
+  simulation-multi-slam-3:
+    build: .
+    image: omokai-robotic-stack:latest
+    network_mode: host
+    ipc: host
+    environment:
+      <<: *sim-env
+    volumes: *sim-volumes
+    command: >
+      bash -c "source /opt/ros/humble/setup.bash &&
+               source /usr/share/gazebo/setup.sh &&
+               ros2 launch nav2_bringup cloned_multi_tb3_simulation_launch.py
+               world:=/app/config/worlds/warehouse.world
+               params_file:=/app/config/nav2_params.yaml
+               robots:='tb3_0={x: -2.0, y: -0.5, yaw: 0.0}; tb3_1={x: -2.0, y: 0.5, yaw: 0.0}; tb3_2={x: -2.0, y: -1.5, yaw: 0.0}'
+               robot_sdf:=/app/config/models/turtlebot3_waffle_pi/model.sdf
+               slam:=True
+               autostart:=True"
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # CHALLENGE 2 — Namespaced Multi-SLAM Launcher
+  # Always run this alongside any simulation-multi-slam-* service.
+  # Starts an isolated slam_toolbox node per robot with correct TF remappings.
+  # ─────────────────────────────────────────────────────────────────────────────
+  multi-slam:
+    build: .
+    image: omokai-robotic-stack:latest
+    network_mode: host
+    ipc: host
+    environment:
+      <<: *sim-env
+    command: >
+      bash -c "source /opt/ros/humble/setup.bash &&
+               ros2 launch /app/config/launch/multi_slam_launch.py"
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Interactive Mission Command Pipeline
+  # Works with ANY simulation service above.
+  # docker compose run controller
+  # Then inside the shell: python3 main.py --prompt "..." --ros --robot turtlebot3
+  # ─────────────────────────────────────────────────────────────────────────────
   controller:
     build: .
     image: omokai-robotic-stack:latest

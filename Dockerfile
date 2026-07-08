@@ -4,6 +4,7 @@ FROM osrf/ros:humble-desktop
 ENV DEBIAN_FRONTEND=noninteractive
 ENV TURTLEBOT3_MODEL=waffle_pi
 ENV LIBGL_ALWAYS_SOFTWARE=1
+ENV GAZEBO_MODEL_PATH=/opt/ros/humble/share/:/root/.gazebo/models
 
 WORKDIR /app
 
@@ -37,7 +38,7 @@ RUN cp -r /opt/ros/humble/share/turtlebot3_description /root/.gazebo/models/ && 
     cp -r /opt/ros/humble/share/turtlebot3_gazebo/models/turtlebot3_waffle_pi /root/.gazebo/models/ && \
     cp -r /opt/ros/humble/share/turtlebot3_gazebo/models/turtlebot3_common /root/.gazebo/models/
 
-# 4.5. Cache standard target models locally for offline vision AI tasks
+# 4.5. Cache standard target models locally for offline Vision AI tasks (Challenge 3)
 RUN for model in person_standing beer suv bus car_wheel mailbox stop_light; do \
       mkdir -p /root/.gazebo/models/$model && \
       curl -sSL http://models.gazebosim.org/$model/model.tar.gz | tar -xz -C /root/.gazebo/models/; \
@@ -47,12 +48,18 @@ RUN for model in person_standing beer suv bus car_wheel mailbox stop_light; do \
 COPY requirements.txt .
 RUN pip3 install --no-cache-dir -r requirements.txt
 
+# 5.5 Pre-download YOLOv8 nano weights for offline evaluator testing (Challenge 3)
+RUN python3 -c "from ultralytics import YOLO; YOLO('yolov8n.pt')"
+
 # 6. Copy the project code
 COPY . .
 
-# Set up environment sourcing in bashrc
+# 7. Set up persistent environment sourcing
 RUN echo "source /opt/ros/humble/setup.bash" >> /root/.bashrc && \
-    echo "export GAZEBO_MODEL_PATH=\$GAZEBO_MODEL_PATH:/opt/ros/humble/share/:/root/.gazebo/models" >> /root/.bashrc
+    echo "source /usr/share/gazebo/setup.sh" >> /root/.bashrc && \
+    echo "export GAZEBO_MODEL_PATH=\$GAZEBO_MODEL_PATH:/opt/ros/humble/share/:/root/.gazebo/models" >> /root/.bashrc && \
+    echo "export TURTLEBOT3_MODEL=waffle_pi" >> /root/.bashrc && \
+    echo "export LIBGL_ALWAYS_SOFTWARE=1" >> /root/.bashrc
 
 # Default entrypoint starts bash so you can run commands interactively
 CMD ["bash"]

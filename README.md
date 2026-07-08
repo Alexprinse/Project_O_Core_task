@@ -249,32 +249,63 @@ export GEMINI_API_KEY="your_gemini_api_key_here"
 
 You can run the entire simulation, navigation stack, and python pipeline completely inside Docker. The 3D simulator window (Gazebo/RViz) will be rendered on your host display using X11 forwarding.
 
+The `docker-compose.yml` defines a dedicated service for every challenge scenario. Pick the one that matches what you want to test.
+
+#### 0. Build the Image (Once)
+```bash
+docker compose build
+```
+
 #### 1. Grant Docker access to your X Server (Run on your Host)
-Before launching the containers, authorize local docker containers to connect to your host GUI window server:
 ```bash
 xhost +local:docker
 ```
 
-#### 2. Build and Start the Simulator (Terminal 1)
-Build the unified container and start the Gazebo AWS warehouse world + Nav2 navigation server:
+#### 2. Export your API Key
 ```bash
-docker compose up simulation
-```
-*(The simulation will launch instantly, load the custom map, and show up on your host screen).*
-
-#### 3. Run Commands Interactively (Terminal 2)
-In a separate terminal, start the interactive controller shell:
-```bash
-# Export your API key on the host
 export GEMINI_API_KEY="your_gemini_api_key_here"
+```
 
-# Start the controller container and open a bash shell
+#### 3. Pick a Simulation Service
+
+| Scenario | Command |
+|---|---|
+| Challenge 1 & 2 — Single robot, static map | `docker compose up simulation` |
+| Challenge 2 — Single robot, SLAM mode | `docker compose up simulation-slam` |
+| Challenge 1 — 2-robot squad, static map | `docker compose up simulation-multi-2` |
+| Challenge 1 — 3-robot squad, static map | `docker compose up simulation-multi-3` |
+| Challenge 1+2 — 2-robot SLAM | `docker compose up simulation-multi-slam-2 multi-slam` |
+| Challenge 1+2 — 3-robot SLAM | `docker compose up simulation-multi-slam-3 multi-slam` |
+
+> **Note for Multi-Robot SLAM**: Always run `multi-slam` alongside any `simulation-multi-slam-*` service. The `multi-slam` service starts an isolated `slam_toolbox` node per robot with correct TF remappings.
+
+#### 4. Run the Controller (Terminal 2 — works with ANY simulation service)
+
+```bash
 docker compose run controller
 ```
 
-Once inside the container shell, you can issue natural-language prompts to command the robot:
+Once inside the container shell, source your environment and run prompts:
+
 ```bash
-python3 main.py --prompt "patrol the delivery line for once at maximum speed of 2.5m/s" --ros --robot turtlebot3
+# Source is already done in .bashrc, just run:
+python3 main.py --prompt "split the route of warehouse_patrol between robot 1 and robot 2" --ros --robot turtlebot3
+```
+
+##### Example prompts inside Docker:
+```bash
+# Challenge 1 — Formation patrol
+python3 main.py --prompt "robot 1 and robot 2 patrol warehouse_patrol in column formation" --ros --robot turtlebot3
+
+# Challenge 2 — Navigate to named waypoint
+python3 main.py --prompt "go to right_end" --ros --robot turtlebot3
+
+# Challenge 2 — Arbitrary coordinates
+python3 main.py --prompt "go to x=1.92, y=2.20 and then go to x=1.76, y=-9.43" --ros --robot turtlebot3
+
+# Challenge 3 — Vision follow (after spawning a target)
+python3 scripts/swap_object.py --object person --x 1.8 --y 7.0
+python3 main.py --prompt "go to right_end, then search and follow the bottle" --ros --robot turtlebot3
 ```
 
 ---
