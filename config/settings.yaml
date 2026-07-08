@@ -3,7 +3,12 @@ safety:
   min_speed: 0.1      # minimum allowed speed in meters per second
   max_loops: 10       # maximum allowed loop count to prevent infinite runs
   default_speed: 0.5  # default speed if LLM doesn't specify one
+  x_min: -10.0        # minimum allowed x coordinate
+  x_max: 10.0         # maximum allowed x coordinate
+  y_min: -12.0        # minimum allowed y coordinate
+  y_max: 12.0         # maximum allowed y coordinate
 
 llm:
-  model: "gemini-2.5-flash"
+  model: "gemini-3.5-flash"
   use_mock: false     # Set to true to run locally without API keys
+

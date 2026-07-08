@@ -46,8 +46,30 @@ class MissionValidator:
         else:
             plan.speed = self.settings.get("safety", {}).get("default_speed", 0.5)
 
-        allowed_routes = self.waypoints.get("routes", {}).keys()
-        if plan.route not in allowed_routes:
-            raise ValueError(f"Safety constraint violated: Route '{plan.route}' is not a known route. Known routes: {list(allowed_routes)}")
+        # 3. Route vs Custom Waypoints vs Target Object checks
+        if plan.mission_type == "follow":
+            if not plan.target_object:
+                raise ValueError("Safety constraint violated: Mission type is 'follow' but no target_object is specified.")
+        else:
+            if not plan.route and not plan.waypoints:
+                raise ValueError("Safety constraint violated: Mission requires either a predefined 'route' or custom 'waypoints'.")
+
+            if plan.route:
+                allowed_routes = self.waypoints.get("routes", {}).keys()
+                if plan.route not in allowed_routes:
+                    raise ValueError(f"Safety constraint violated: Route '{plan.route}' is not a known route. Known routes: {list(allowed_routes)}")
+            
+            if plan.waypoints:
+                x_min = self.settings.get("safety", {}).get("x_min", -10.0)
+                x_max = self.settings.get("safety", {}).get("x_max", 10.0)
+                y_min = self.settings.get("safety", {}).get("y_min", -12.0)
+                y_max = self.settings.get("safety", {}).get("y_max", 12.0)
+                
+                for idx, wp in enumerate(plan.waypoints):
+                    if not (x_min <= wp.x <= x_max):
+                        raise ValueError(f"Safety constraint violated: Waypoint {idx} ({wp.name or 'unnamed'}) X coordinate ({wp.x}) is outside allowed bounds ({x_min} - {x_max})")
+                    if not (y_min <= wp.y <= y_max):
+                        raise ValueError(f"Safety constraint violated: Waypoint {idx} ({wp.name or 'unnamed'}) Y coordinate ({wp.y}) is outside allowed bounds ({y_min} - {y_max})")
 
         return plan
+

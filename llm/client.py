@@ -68,17 +68,60 @@ class MissionParser:
         
         plan = {
             "mission_type": "patrol",
-            "route": "warehouse_loop",
+            "route": None,
+            "waypoints": None,
             "loops": 1,
             "speed": None,
-            "return_home": True
+            "return_home": True,
+            "target_object": None
         }
         
-        if "inspect" in prompt_lower:
-            plan["mission_type"] = "inspect"
-            plan["route"] = "inspection_route"
-        if "perimeter" in prompt_lower:
-            plan["route"] = "perimeter"
+        # Check for coordinate navigation
+        import re
+        x_match = re.search(r"x\s*=\s*(-?\d+\.?\d*)", prompt_lower)
+        y_match = re.search(r"y\s*=\s*(-?\d+\.?\d*)", prompt_lower)
+        coords_match = re.search(r"(?:navigate to|go to)\s+(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)", prompt_lower)
+        
+        if x_match and y_match:
+            x_val = float(x_match.group(1))
+            y_val = float(y_match.group(1))
+            plan["mission_type"] = "navigate"
+            plan["route"] = None
+            plan["waypoints"] = [{"name": "target", "x": x_val, "y": y_val, "theta": 0.0}]
+        elif coords_match:
+            x_val = float(coords_match.group(1))
+            y_val = float(coords_match.group(2))
+            plan["mission_type"] = "navigate"
+            plan["route"] = None
+            plan["waypoints"] = [{"name": "target", "x": x_val, "y": y_val, "theta": 0.0}]
+        else:
+            if "inspect" in prompt_lower:
+                plan["mission_type"] = "inspect"
+                plan["route"] = "inspection_route"
+            if "perimeter" in prompt_lower:
+                plan["route"] = "perimeter"
+            if "patrol" in prompt_lower:
+                plan["mission_type"] = "patrol"
+                plan["route"] = "warehouse_patrol"
+            if "delivery" in prompt_lower:
+                plan["mission_type"] = "deliver"
+                plan["route"] = "delivery"
+            if "top_side" in prompt_lower:
+                plan["route"] = "top_side"
+            if "bottom_side" in prompt_lower:
+                plan["route"] = "bottom_side"
+            
+        # Check for follow mission
+        if "follow" in prompt_lower or "track" in prompt_lower or "find" in prompt_lower:
+            plan["mission_type"] = "follow"
+            
+            # Extract target
+            for token in ["red", "green", "blue", "yellow", "person", "chair", "bottle", "car", "bus", "traffic light", "table", "box", "cone", "tree"]:
+                if token in prompt_lower:
+                    plan["target_object"] = token
+                    break
+            if not plan["target_object"]:
+                plan["target_object"] = "red" # default target
             
         if "twice" in prompt_lower or "2 times" in prompt_lower:
             plan["loops"] = 2
@@ -98,3 +141,4 @@ class MissionParser:
             plan["return_home"] = False
             
         return plan
+

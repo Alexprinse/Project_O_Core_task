@@ -152,6 +152,16 @@ export GEMINI_API_KEY="your_gemini_api_key_here"
     ```bash
     python3 main.py --prompt "patrol top_side for once" --ros --robot turtlebot3
     ```
+*   **Challenge 2: TurtleBot3 SLAM Coordinate Navigation:**
+    ```bash
+    # Command the robot to navigate to arbitrary coordinates x=1.5, y=-2.0
+    python3 main.py --prompt "go to coordinates x=1.5, y=-2.0" --ros --robot turtlebot3
+    ```
+*   **Challenge 3: TurtleBot3 Vision AI Target Detection & Follow:**
+    ```bash
+    # Command the robot to locate and follow a user-defined target (e.g., 'red')
+    python3 main.py --prompt "find the red target and follow it" --ros --robot turtlebot3
+    ```
 
 ---
 
@@ -202,6 +212,22 @@ If you do not have Gazebo or ROS 2 installed and want to run the pipeline offlin
     source .venv/bin/activate
     python main.py --prompt "Patrol the warehouse loop twice" --robot turtlebot3 --mock-llm
     ```
+
+## 🏆 Senior Challenges Implemented
+
+This repository implements two of the three senior-level challenges:
+
+### 1. Challenge 2: SLAM / Autonomous Navigation
+* **Online Mapping & Localization**: The pipeline is designed to work in an unknown or partially known environment. If you launch the simulation in SLAM mode (with SLAM Toolbox mapping on-the-fly), the controller automatically detects `/slam_toolbox/get_state` and bypasses the static map AMCL localizer lifecycle checks, adapting to the dynamically growing map.
+* **Arbitrary Coordinate Navigation**: Rather than navigating only to predefined routes, the user can command the robot to drive to arbitrary coordinates (e.g. `"go to coordinates x=1.5, y=-2.0"`). The LLM extracts the target coordinates directly, and the validator ensures the coordinates are within configured safety bounds (e.g. `x_min`/`x_max` limits in `config/settings.yaml`). The deterministic executor then commands Nav2 to plan a safe path to the custom pose.
+
+### 2. Challenge 3: Vision AI Target Detection & Follow
+* **Dual Vision Modalities**: 
+  1. **HSV Color Segmentation**: Highly robust and fast tracking for distinctively colored objects (e.g. `"red"`, `"green"`, `"blue"`, `"yellow"`) in simulated worlds.
+  2. **MobileNet-SSD DNN**: Uses a lightweight 20-class object detection neural network running on CPU via OpenCV's DNN module, supporting targets like `"person"`, `"bottle"`, `"chair"`.
+* **Dynamic Follow Control Loop**: Subscribes to `/camera/image_raw`, processes the frames, and runs target detection. It adjusts the robot's angular velocity to keep the target centered in the frame, and adjusts linear velocity to drive towards it, stopping automatically when it gets close.
+* **Operator Alerts**: Captures a snapshot of the camera frame with bounding boxes and labels when the target is first acquired and saves it to `detection.jpg` in the project root to send back to the human operator.
+* **Fully Portable**: Converts the raw ROS Image bytes to OpenCV BGR matrices manually inside the script. This eliminates the dependency on the `cv_bridge` package, making the image processor work flawlessly inside custom python virtual environments on any host machine or container.
 
 ---
 

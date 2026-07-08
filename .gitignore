@@ -27,3 +27,8 @@ mission_report.docx
 eyrc_ws/build/
 eyrc_ws/install/
 eyrc_ws/log/
+tests/
+detection.jpg
+*.pt
+yolov8n.pt
+

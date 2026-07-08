@@ -23,31 +23,49 @@ class MissionExecutor:
         logger.info(f"Speed: {plan.speed} m/s")
         logger.info("=" * 50)
         
-        # Resolve route to actual waypoint coordinates
-        route_waypoints = self.waypoints.get("routes", {}).get(plan.route, [])
-        if not route_waypoints:
-            logger.error(f"Route '{plan.route}' has no waypoints defined!")
-            return
+        # 1. Waypoint Navigation
+        route_waypoints = []
+        if plan.route:
+            route_waypoints = self.waypoints.get("routes", {}).get(plan.route, [])
+            if not route_waypoints:
+                logger.error(f"Route '{plan.route}' has no waypoints defined!")
+                return
+        elif plan.waypoints:
+            route_waypoints = [
+                {"name": wp.name or f"wp_{i}", "x": wp.x, "y": wp.y, "theta": wp.theta}
+                for i, wp in enumerate(plan.waypoints)
+            ]
             
-        for loop_idx in range(1, plan.loops + 1):
-            logger.info(f"🔄 Starting Loop {loop_idx}/{plan.loops}...")
-            
-            for wp in route_waypoints:
-                name = wp.get("name", "unknown")
-                x = wp.get("x", 0.0)
-                y = wp.get("y", 0.0)
-                theta = wp.get("theta", 0.0)
-                
-                # Deterministic command execution
-                success = self.robot.navigate_to(name, x, y, theta, plan.speed)
-                if not success:
-                    logger.error(f"❌ Failed to navigate to {name}. Aborting mission.")
-                    self.robot.stop()
-                    return
+        if route_waypoints:
+            for loop_idx in range(1, plan.loops + 1):
+                logger.info(f"🔄 Starting Loop {loop_idx}/{plan.loops}...")
+                for wp in route_waypoints:
+                    name = wp.get("name", "unknown")
+                    x = wp.get("x", 0.0)
+                    y = wp.get("y", 0.0)
+                    theta = wp.get("theta", 0.0)
                     
-            logger.info(f"✅ Loop {loop_idx} completed.")
-            
-        if plan.return_home:
+                    success = self.robot.navigate_to(name, x, y, theta, plan.speed)
+                    if not success:
+                        logger.error(f"❌ Failed to navigate to {name}. Aborting mission.")
+                        self.robot.stop()
+                        return
+                logger.info(f"✅ Loop {loop_idx} completed.")
+                
+        # 2. Target Follow (Challenge 3)
+        if plan.target_object or plan.mission_type == "follow":
+            target = plan.target_object or "red"  # fallback if target is implicit
+            if hasattr(self.robot, "follow_target"):
+                logger.info(f"👁️ Starting target follow behavior for: '{target}'")
+                success = self.robot.follow_target(target, plan.speed)
+                if not success:
+                    logger.error("❌ Target tracking failed or timed out.")
+            else:
+                logger.error("Robot controller does not support target tracking/following!")
+                return
+                
+        # 3. Return Home (Only if not tracking or tracking finished)
+        if plan.return_home and not plan.target_object:
             logger.info("🏠 Returning home...")
             home_wp = self.waypoints.get("home", {"x": 0.0, "y": 0.0, "theta": 0.0})
             self.robot.navigate_to("home", home_wp["x"], home_wp["y"], home_wp["theta"], plan.speed)

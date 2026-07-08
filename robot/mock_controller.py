@@ -46,3 +46,32 @@ class MockRobotController(BaseRobotController):
         
     def stop(self) -> None:
         logger.warning("🛑 [MockRobot] Emergency Stop triggered!")
+
+    def follow_target(self, target_name: str, speed: float) -> bool:
+        logger.info(f"🚀 [MockRobot] Initializing search loop for target '{target_name}'...")
+        time.sleep(1.0)
+        logger.info(f"🔍 [MockRobot] Scanning environment with camera...")
+        time.sleep(1.5)
+        logger.info(f"🎯 [MockRobot] Target '{target_name}' acquired in camera frame!")
+        time.sleep(1.0)
+        logger.info(f"📸 [MockRobot] Sending picture to operator. Saving to project root as 'detection.jpg'")
+        
+        # Save a mock image to project root
+        try:
+            import numpy as np
+            import cv2
+            # Create a 300x300 image with text
+            img = np.zeros((300, 300, 3), dtype=np.uint8)
+            cv2.putText(img, f"MOCK: {target_name}", (10, 150), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
+            cv2.imwrite("detection.jpg", img)
+            logger.info("✅ Saved mock image to detection.jpg")
+        except Exception as e:
+            logger.warning(f"Could not save mock image: {e}")
+            
+        logger.info(f"🔄 [MockRobot] Following target at distance: 2.0 meters at {speed} m/s...")
+        for i in range(1, 4):
+            time.sleep(0.8)
+            logger.info(f"   [MockRobot] Tracking target: center offset = {5*i}px, distance = {2.0 - 0.2*i}m")
+        logger.info(f"✅ [MockRobot] Successfully followed target '{target_name}'.")
+        return True
+
