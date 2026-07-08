@@ -266,4 +266,9 @@ This project builds on and references the following open-source resources:
 * **ROS 2 Nav2 Simple Commander** ([ros-navigation/navigation2](https://github.com/ros-navigation/navigation2)) - *License: Apache-2.0*. Used as reference for the programmatic interface (`BasicNavigator`) to Nav2.
 * **AWS RoboMaker Small Warehouse World** ([aws-robotics/aws-robomaker-small-warehouse-world](https://github.com/aws-robotics/aws-robomaker-small-warehouse-world)) - *License: Apache-2.0*. Used as the 3D Gazebo warehouse world layout.
 * **SLAM Toolbox** ([SteveMacenski/slam_toolbox](https://github.com/SteveMacenski/slam_toolbox)) - *License: LGPL-2.1*. Used for 2D mapping and real-time loop-closure localization.
+* **Ultralytics YOLO** ([ultralytics/ultralytics](https://github.com/ultralytics/ultralytics)) - *License: AGPL-3.0*. Used as the object detection and tracking framework for Challenge 3.
+* **PyTorch** ([pytorch/pytorch](https://github.com/pytorch/pytorch)) - *License: BSD-3*. Used as the deep learning backend for YOLOv8 model inference.
+* **OpenCV** ([opencv/opencv](https://github.com/opencv/opencv)) - *License: Apache-2.0*. Used for matrix operations, drawing bounding boxes, and camera stream conversion.
 * **eYRC Krishi Cobot Serpentine Navigation** - *License: Custom/Educational*. The proportional control and LiDAR obstacle avoidance algorithms in `robot/ebot_controller.py` are adapted from my past work in the e-Yantra Robotics Competition 2025-26.
+* **TurtleBot3 Simulations** ([ROBOTIS-GIT/turtlebot3_simulations](https://github.com/ROBOTIS-GIT/turtlebot3_simulations)) - *License: Apache-2.0*. Used as the 3D model and differential-drive control plugins for the TurtleBot3 Waffle Pi robot simulation in Gazebo.
+
