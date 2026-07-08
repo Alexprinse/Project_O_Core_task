@@ -278,7 +278,7 @@ class ROS2Nav2Controller(BaseRobotController):
                     
                     # Linear velocity: proportional to target size (closer = larger box area)
                     width_ratio = tw / float(width)
-                    if width_ratio > 0.45:
+                    if width_ratio > 0.25:
                         logger.info("🏁 Arrived near the target. Stopping.")
                         twist.linear.x = 0.0
                         twist.angular.z = 0.0
