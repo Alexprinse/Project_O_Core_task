@@ -89,20 +89,12 @@ chmod +x setup_simulation.sh
 ```
 *(This script also automatically sets up the Python virtual environment `.venv` with access to ROS system packages).*
 
-### Step 3: Build the Simulation Workspace (Manual Re-compilation)
-The setup script compiles the workspace automatically. However, if you modify code in `eyrc_ws` or want to rebuild manually, run:
-```bash
-cd eyrc_ws
-colcon build
-cd ..
-```
-
-### Step 4: Run the Simulation & Pipeline (Native Host Setup)
+### Step 3: Run the Simulation & Pipeline (Native Host Setup)
 
 To execute the pipeline natively on your host machine:
 
 #### 1. Start the Simulation (Terminal 1)
-*   **For TurtleBot3 — Map-Based Navigation (Challenge 1 & 2):**
+*   **For TurtleBot3 — Map-Based Navigation (Challenge 1 & 3):**
     ```bash
     export LIBGL_ALWAYS_SOFTWARE=1
     export TURTLEBOT3_MODEL=waffle_pi
@@ -234,7 +226,7 @@ export GEMINI_API_KEY="your_gemini_api_key_here"
 
 ---
 
-### Step 5: Run EVERYTHING inside Docker (with X11 Display Forwarding)
+### Step 4: Run EVERYTHING inside Docker (with X11 Display Forwarding)
 
 **Highly Recommended:** You can run the entire simulation, ROS 2 Navigation stack, and Python LLM pipeline completely inside Docker. The 3D simulator window (Gazebo/RViz) will be rendered on your host display using X11 forwarding.
 
@@ -242,7 +234,7 @@ export GEMINI_API_KEY="your_gemini_api_key_here"
 
 ---
 
-### Step 6: Run in Mock Mode (Zero-Dependency Offline Test)
+### Step 5: Run in Mock Mode (Zero-Dependency Offline Test)
 If you do not have Gazebo or ROS 2 installed and want to run the pipeline offline:
 
 *   **Using Docker (Fastest, requires no local Python packages):**
