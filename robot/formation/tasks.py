@@ -87,23 +87,31 @@ def execute_explicit_patrol(manager, agent_routes: List[dict], waypoints_config:
         futures = []
         for route_info in agent_routes:
             aid = route_info["agent_id"]
-            route_name = route_info["route"]
+            route_name = route_info.get("route")
+            custom_waypoints = route_info.get("waypoints")
             loops = route_info.get("loops", 1)
             
             if aid not in manager.agents:
                 logger.warning(f"Skipping assignment: Agent '{aid}' is not active in this squad.")
                 continue
                 
-            # Load route waypoints from configuration
-            if "routes" in waypoints_config and route_name in waypoints_config["routes"]:
-                raw_wps = waypoints_config["routes"][route_name]
-                wps = [(wp["x"], wp["y"], wp.get("theta", 0.0)) for wp in raw_wps]
+            wps = []
+            if route_name:
+                # Load route waypoints from configuration
+                if "routes" in waypoints_config and route_name in waypoints_config["routes"]:
+                    raw_wps = waypoints_config["routes"][route_name]
+                    wps = [(wp["x"], wp["y"], wp.get("theta", 0.0)) for wp in raw_wps]
+                    logger.info(f"   Assigning Agent '{aid}' to route '{route_name}' ({len(wps)} waypoints, loops: {loops})")
+                else:
+                    logger.error(f"Route '{route_name}' not found in waypoint configuration.")
+                    return False
+            elif custom_waypoints:
+                wps = [(wp["x"], wp["y"], wp.get("theta", 0.0)) for wp in custom_waypoints]
+                logger.info(f"   Assigning Agent '{aid}' to {len(wps)} custom waypoints (loops: {loops})")
             else:
-                logger.error(f"Route '{route_name}' not found in waypoint configuration.")
+                logger.error(f"No route or custom waypoints defined for agent '{aid}'.")
                 return False
                 
-            logger.info(f"   Assigning Agent '{aid}' to route '{route_name}' ({len(wps)} waypoints, loops: {loops})")
-            
             # Submit task to executor thread
             futures.append(
                 executor.submit(_run_agent_sequence, manager.agents[aid], wps, speed, loops)

@@ -54,8 +54,20 @@ class MissionValidator:
             # Explicit split patrol routes are defined per-agent, verify each route exists
             allowed_routes = self.waypoints.get("routes", {}).keys()
             for r in plan.agent_routes:
-                if r.route not in allowed_routes:
+                if not r.route and not r.waypoints:
+                    raise ValueError(f"Safety constraint violated: Agent '{r.agent_id}' has neither a predefined route nor waypoints.")
+                if r.route and r.route not in allowed_routes:
                     raise ValueError(f"Safety constraint violated: Route '{r.route}' for agent '{r.agent_id}' is not a known route. Known routes: {list(allowed_routes)}")
+                if r.waypoints:
+                    x_min = self.settings.get("safety", {}).get("x_min", -10.0)
+                    x_max = self.settings.get("safety", {}).get("x_max", 10.0)
+                    y_min = self.settings.get("safety", {}).get("y_min", -12.0)
+                    y_max = self.settings.get("safety", {}).get("y_max", 12.0)
+                    for idx, wp in enumerate(r.waypoints):
+                        if not (x_min <= wp.x <= x_max):
+                            raise ValueError(f"Safety constraint violated: Waypoint {idx} ({wp.name or 'unnamed'}) for agent '{r.agent_id}' X coordinate ({wp.x}) is outside allowed bounds ({x_min} - {x_max})")
+                        if not (y_min <= wp.y <= y_max):
+                            raise ValueError(f"Safety constraint violated: Waypoint {idx} ({wp.name or 'unnamed'}) for agent '{r.agent_id}' Y coordinate ({wp.y}) is outside allowed bounds ({y_min} - {y_max})")
         elif plan.mission_type in ("regroup", "regroup_home") and not plan.route and not plan.waypoints:
             # Regrouping to base station does not require a predefined route or waypoints
             pass

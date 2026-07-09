@@ -25,8 +25,9 @@ class AgentRoute(BaseModel):
     Represents an explicit route assignment for a single robot agent.
     """
     agent_id: str = Field(description="The namespaced ID of the robot, e.g., 'tb3_0', 'tb3_1'")
-    route: str = Field(description="The pre-configured route name for this agent, e.g., 'top_side'")
-    loops: int = Field(default=1, description="Number of times to loop this route")
+    route: Optional[str] = Field(default=None, description="The pre-configured route name for this agent, e.g., 'top_side'")
+    waypoints: Optional[List[Waypoint]] = Field(default=None, description="List of custom coordinate waypoints to execute for this agent")
+    loops: int = Field(default=1, description="Number of times to loop this route or waypoints")
 
 class MissionPlan(BaseModel):
     """
