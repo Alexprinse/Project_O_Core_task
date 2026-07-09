@@ -77,7 +77,7 @@ Follow these steps sequentially to set up and run the simulation and controller 
 ### Step 1: Clone the Repository
 Clone the codebase and navigate to the project directory:
 ```bash
-git clone https://github.com/Alexprinse/Omokai_Project.git
+git clone https://github.com/Alexprinse/Project_O.git
 cd Omokai_Project
 ```
 
