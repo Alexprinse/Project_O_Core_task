@@ -2,7 +2,7 @@
 
 A production-quality, modular robotics pipeline that translates natural language instructions into validated, deterministic JSON mission plans and executes them on physical or simulated robots.
 
-This project implements all three senior-level challenges of the Omokai Robotics Engineering Task, demonstrating full support for multiple ground robot platforms in simulation: **TurtleBot3** (using ROS 2 Nav2) and the **e-Yantra Krishi Cobot** (using direct odometry/LiDAR velocity controls).
+This project implements all three senior-level challenges of the Omokai Robotics Engineering Task, demonstrating full support for the **TurtleBot3** (using ROS 2 Nav2).
 
 > **🏆 All 3 Senior Challenges Completed:** Multi-Robot Squad Coordination, SLAM Dynamic Mapping & Navigation, and Vision AI Target Detection & Follow.
 
@@ -102,17 +102,6 @@ cd ..
 To execute the pipeline natively on your host machine:
 
 #### 1. Start the Simulation (Terminal 1)
-*   **For e-Yantra Krishi Cobot (ebot):**
-    *   **Terminal 1 (Launch World):**
-        ```bash
-        source eyrc_ws/install/setup.bash
-        ros2 launch eyantra_warehouse task2.launch.py
-        ```
-    *   **Terminal 2 (Spawn Robot):**
-        ```bash
-        source eyrc_ws/install/setup.bash
-        ros2 launch ebot_description spawn_ebot.launch.py
-        ```
 *   **For TurtleBot3 — Map-Based Navigation (Challenge 1 & 2):**
     ```bash
     export LIBGL_ALWAYS_SOFTWARE=1
@@ -247,66 +236,9 @@ export GEMINI_API_KEY="your_gemini_api_key_here"
 
 ### Step 5: Run EVERYTHING inside Docker (with X11 Display Forwarding)
 
-You can run the entire simulation, navigation stack, and python pipeline completely inside Docker. The 3D simulator window (Gazebo/RViz) will be rendered on your host display using X11 forwarding.
+**Highly Recommended:** You can run the entire simulation, ROS 2 Navigation stack, and Python LLM pipeline completely inside Docker. The 3D simulator window (Gazebo/RViz) will be rendered on your host display using X11 forwarding.
 
-The `docker-compose.yml` defines a dedicated service for every challenge scenario. Pick the one that matches what you want to test.
-
-#### 0. Build the Image (Once)
-```bash
-docker compose build
-```
-
-#### 1. Grant Docker access to your X Server (Run on your Host)
-```bash
-xhost +local:docker
-```
-
-#### 2. Export your API Key
-```bash
-export GEMINI_API_KEY="your_gemini_api_key_here"
-```
-
-#### 3. Pick a Simulation Service
-
-| Scenario | Command |
-|---|---|
-| Challenge 1 & 2 — Single robot, static map | `docker compose up simulation` |
-| Challenge 2 — Single robot, SLAM mode | `docker compose up simulation-slam` |
-| Challenge 1 — 2-robot squad, static map | `docker compose up simulation-multi-2` |
-| Challenge 1 — 3-robot squad, static map | `docker compose up simulation-multi-3` |
-| Challenge 1+2 — 2-robot SLAM | `docker compose up simulation-multi-slam-2 multi-slam` |
-| Challenge 1+2 — 3-robot SLAM | `docker compose up simulation-multi-slam-3 multi-slam` |
-
-> **Note for Multi-Robot SLAM**: Always run `multi-slam` alongside any `simulation-multi-slam-*` service. The `multi-slam` service starts an isolated `slam_toolbox` node per robot with correct TF remappings.
-
-#### 4. Run the Controller (Terminal 2 — works with ANY simulation service)
-
-```bash
-docker compose run controller
-```
-
-Once inside the container shell, source your environment and run prompts:
-
-```bash
-# Source is already done in .bashrc, just run:
-python3 main.py --prompt "split the route of warehouse_patrol between robot 1 and robot 2" --ros --robot turtlebot3
-```
-
-##### Example prompts inside Docker:
-```bash
-# Challenge 1 — Formation patrol
-python3 main.py --prompt "robot 1 and robot 2 patrol warehouse_patrol in column formation" --ros --robot turtlebot3
-
-# Challenge 2 — Navigate to named waypoint
-python3 main.py --prompt "go to right_end" --ros --robot turtlebot3
-
-# Challenge 2 — Arbitrary coordinates
-python3 main.py --prompt "go to x=1.92, y=2.20 and then go to x=1.76, y=-9.43" --ros --robot turtlebot3
-
-# Challenge 3 — Vision follow (after spawning a target)
-python3 scripts/swap_object.py --object person --x 1.8 --y 7.0
-python3 main.py --prompt "go to right_end, then search and follow the bottle" --ros --robot turtlebot3
-```
+👉 **[See the full Docker Setup Guide (docs/docker.md)](docs/docker.md) for complete instructions on building the image, launching the simulation scenarios, and running the controller.**
 
 ---
 
@@ -381,7 +313,6 @@ An end-to-end visual servoing controller integrates YOLOv8 nano deep learning in
 ## ⚙️ Configuration Files
 * **[config/settings.yaml](config/settings.yaml)**: Safety boundaries (min/max speeds, loop limits, coordinate bounds).
 * **[config/waypoints_turtlebot3.yaml](config/waypoints_turtlebot3.yaml)**: Named route coordinates for the TurtleBot3 simulation (warehouse patrol, top/bottom side, delivery routes, home pose).
-* **[config/waypoints_ebot.yaml](config/waypoints_ebot.yaml)**: Serpentine and corridor coordinates for the ebot simulation.
 * **[config/nav2_params.yaml](config/nav2_params.yaml)**: Nav2 parameter overrides for namespaced multi-robot configurations.
 * **[config/launch/multi_slam_launch.py](config/launch/multi_slam_launch.py)**: Custom launch file for per-robot namespaced SLAM toolbox nodes.
 
@@ -409,5 +340,4 @@ This project builds on and references the following open-source resources:
 * **Ultralytics YOLO** ([ultralytics/ultralytics](https://github.com/ultralytics/ultralytics)) - *License: AGPL-3.0*. Used as the object detection and tracking framework for Challenge 3.
 * **PyTorch** ([pytorch/pytorch](https://github.com/pytorch/pytorch)) - *License: BSD-3*. Used as the deep learning backend for YOLOv8 model inference.
 * **OpenCV** ([opencv/opencv](https://github.com/opencv/opencv)) - *License: Apache-2.0*. Used for matrix operations, drawing bounding boxes, and camera stream conversion.
-* **eYRC Krishi Cobot Serpentine Navigation** - *License: Custom/Educational*. The proportional control and LiDAR obstacle avoidance algorithms in `robot/ebot_controller.py` are adapted from my past work in the e-Yantra Robotics Competition 2025-26.
 * **TurtleBot3 Simulations** ([ROBOTIS-GIT/turtlebot3_simulations](https://github.com/ROBOTIS-GIT/turtlebot3_simulations)) - *License: Apache-2.0*. Used as the 3D model and differential-drive control plugins for the TurtleBot3 Waffle Pi robot simulation in Gazebo.
